@@ -1,11 +1,14 @@
-/* A clean, minimal starting point. It's deliberately plain — your prompts will
-   shape how the site actually looks. Edit freely (or just ask the AI to). */
+/* Progress Tracker — playful, colorful, built for gamified weekly check-ins. */
 
 :root {
   --ink: #1f2937;
   --muted: #6b7280;
-  --accent: #2563eb;
-  --bg: #ffffff;
+  --accent: #7c3aed;
+  --accent-2: #f59e0b;
+  --bg: #fef9f5;
+  --card-bg: #ffffff;
+  --done: #22c55e;
+  --border: #e7e5e4;
 }
 
 * {
@@ -16,42 +19,304 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  background: linear-gradient(180deg, #fef3c7 0%, #fef9f5 220px, #fef9f5 100%);
   color: var(--ink);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.6;
 }
 
 .shell {
-  max-width: 640px;
+  max-width: 880px;
   margin: 0 auto;
-  padding: 18vh 24px 24px;
+  padding: 48px 24px 64px;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 32px;
 }
 
 .tag {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--accent);
-  margin: 0 0 12px;
+  margin: 0 0 10px;
 }
 
 h1 {
-  font-size: 44px;
+  font-size: 42px;
   line-height: 1.1;
-  margin: 0 0 16px;
+  margin: 0 0 12px;
+  color: var(--ink);
 }
 
 .lead {
-  font-size: 18px;
-  color: var(--ink);
-  margin: 0 0 20px;
+  font-size: 17px;
+  color: var(--muted);
+  margin: 0;
 }
 
-.hint {
-  font-size: 15px;
+.board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 2px 10px rgba(31, 41, 55, 0.04);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card.full-week {
+  border-color: var(--accent-2);
+  box-shadow: 0 6px 22px rgba(245, 158, 11, 0.25);
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.card-name {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.card-task {
+  font-size: 14px;
   color: var(--muted);
-  border-top: 1px solid #e5e7eb;
-  padding-top: 16px;
+  margin: 0;
+}
+
+.stats-row {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0 16px;
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.stat-pill.points {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.stat-pill.streak {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 0.35s ease;
+  width: 0%;
+}
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.day-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.radio-option {
+  position: relative;
+  width: 34px;
+  height: 28px;
+}
+
+.radio-option input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.radio-option label {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #fafafa;
+  color: var(--muted);
+}
+
+.radio-option.done input:checked + label {
+  background: var(--done);
+  border-color: var(--done);
+  color: #fff;
+  transform: scale(1.08);
+}
+
+.radio-option.pending input:checked + label {
+  background: #f3f4f6;
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.radio-option input:focus-visible + label {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.page-footer {
+  margin-top: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.reset-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.reset-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.week-label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Celebration overlay */
+.celebration {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 50;
+}
+
+.celebration.show {
+  opacity: 1;
+}
+
+.celebration-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 36px;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  transform: scale(0.8);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.celebration.show .celebration-card {
+  transform: scale(1);
+}
+
+.celebration-emoji {
+  font-size: 48px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.celebration-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+#confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 32px;
+  }
+
+  .days {
+    gap: 4px;
+  }
+
+  .day-radio {
+    width: 32px;
+    height: 32px;
+  }
 }

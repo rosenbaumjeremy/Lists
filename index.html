@@ -3,22 +3,34 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- 👉 Change this to your name once you get going. -->
-    <title>My Website</title>
+    <title>Progress Tracker</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏆</text></svg>" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <main class="shell">
-      <p class="tag">Your website — a blank canvas</p>
-      <h1>Start here.</h1>
-      <p class="lead">
-        This page is empty on purpose. Open the AI assistant, describe the site
-        you want, and watch it get built right here.
-      </p>
-      <p class="hint">
-        Try: <em>"Turn this into a personal site with my name, a short bio, and
-        a photo. Clean and minimal."</em>
-      </p>
+      <header class="page-header">
+        <p class="tag">Weekly wins</p>
+        <h1>Progress Tracker</h1>
+        <p class="lead">Tap a day once your task is done. Watch the streaks grow!</p>
+      </header>
+
+      <section id="board" class="board"></section>
+
+      <footer class="page-footer">
+        <button id="resetWeek" class="reset-btn" type="button">Reset this week</button>
+        <span class="week-label" id="weekLabel"></span>
+      </footer>
     </main>
+
+    <div id="celebration" class="celebration" aria-hidden="true">
+      <div class="celebration-card">
+        <div class="celebration-emoji" id="celebrationEmoji">🎉</div>
+        <div class="celebration-text" id="celebrationText">Nice work!</div>
+      </div>
+    </div>
+    <canvas id="confetti"></canvas>
+
+    <script src="app.js"></script>
   </body>
 </html>
