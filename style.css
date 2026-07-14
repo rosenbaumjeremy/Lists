@@ -109,6 +109,38 @@ h1 {
   margin: 0;
 }
 
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-task-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  border-radius: 6px;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.edit-task-btn:hover {
+  opacity: 1;
+  background: #f3f4f6;
+}
+
+.task-input {
+  font-size: 14px;
+  color: var(--ink);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-family: inherit;
+  min-width: 140px;
+}
+
 .stats-row {
   display: flex;
   gap: 10px;

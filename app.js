@@ -82,8 +82,62 @@
       avatar.className = "avatar";
       avatar.style.background = boy.color;
       avatar.textContent = boy.emoji;
+      const effectiveTask = boyState.task || boy.task;
+
       const names = document.createElement("div");
-      names.innerHTML = `<p class="card-name">${boy.name}</p><p class="card-task">${boy.task}</p>`;
+      names.className = "names";
+      names.innerHTML = `<p class="card-name">${boy.name}</p>`;
+
+      const taskRow = document.createElement("div");
+      taskRow.className = "task-row";
+
+      const taskText = document.createElement("p");
+      taskText.className = "card-task";
+      taskText.textContent = effectiveTask;
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "edit-task-btn";
+      editBtn.title = `Change ${boy.name}'s task`;
+      editBtn.setAttribute("aria-label", `Change ${boy.name}'s task`);
+      editBtn.textContent = "✏️";
+
+      taskRow.appendChild(taskText);
+      taskRow.appendChild(editBtn);
+      names.appendChild(taskRow);
+
+      editBtn.addEventListener("click", () => {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "task-input";
+        input.value = effectiveTask;
+        input.maxLength = 60;
+        taskRow.replaceChild(input, taskText);
+        editBtn.style.visibility = "hidden";
+        input.focus();
+        input.select();
+
+        const commit = () => {
+          const value = input.value.trim();
+          boyState.task = value.length > 0 ? value : boy.task;
+          if (boyState.task === boy.task) {
+            delete boyState.task;
+          }
+          saveData(data);
+          render();
+        };
+
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            input.blur();
+          } else if (e.key === "Escape") {
+            input.value = effectiveTask;
+            input.blur();
+          }
+        });
+        input.addEventListener("blur", commit);
+      });
+
       top.appendChild(avatar);
       top.appendChild(names);
       card.appendChild(top);
