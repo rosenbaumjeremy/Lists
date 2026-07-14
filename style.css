@@ -340,6 +340,33 @@ h1 {
   color: #b45309;
 }
 
+.stat-pill.adjustable {
+  cursor: pointer;
+  border: 1px dashed transparent;
+}
+
+.stat-pill.adjustable:hover,
+.stat-pill.adjustable:focus-visible {
+  border-color: currentColor;
+  outline: none;
+}
+
+.stat-pill-edit {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.stat-pill-input {
+  width: 3.2em;
+  font: inherit;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 4px;
+  color: var(--ink);
+  background: #fff;
+}
+
 .progress-bar {
   height: 8px;
   background: #f1f5f9;

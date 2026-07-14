@@ -231,6 +231,75 @@
     render();
   });
 
+  // A stat pill (points/streak) a parent can click to type in a corrected
+  // value directly — not gated behind login, since there's no separate parent
+  // account and this is a manual correction tool, not a kid-facing control.
+  function makeAdjustablePill({ icon, suffix, className, value, title, onCommit }) {
+    const pill = document.createElement("span");
+    pill.className = `stat-pill adjustable ${className}`;
+    pill.title = title;
+    pill.tabIndex = 0;
+    pill.setAttribute("role", "button");
+    pill.setAttribute("aria-label", title);
+
+    const label = document.createElement("span");
+    label.className = "stat-pill-label";
+    label.textContent = `${icon} ${value} ${suffix}`;
+    pill.appendChild(label);
+
+    const editIcon = document.createElement("span");
+    editIcon.className = "stat-pill-edit";
+    editIcon.textContent = "✏️";
+    editIcon.setAttribute("aria-hidden", "true");
+    pill.appendChild(editIcon);
+
+    function startEdit() {
+      const input = document.createElement("input");
+      input.type = "number";
+      input.className = "stat-pill-input";
+      input.value = String(value);
+      input.min = "0";
+      input.step = "1";
+      pill.replaceChild(input, label);
+      editIcon.style.visibility = "hidden";
+      input.focus();
+      input.select();
+
+      const commit = () => {
+        const parsed = parseInt(input.value, 10);
+        const next = Number.isFinite(parsed) ? Math.max(0, parsed) : value;
+        if (next !== value) onCommit(next);
+        else {
+          pill.replaceChild(label, input);
+          editIcon.style.visibility = "";
+        }
+      };
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          input.blur();
+        } else if (e.key === "Escape") {
+          input.value = String(value);
+          input.blur();
+        }
+      });
+      input.addEventListener("blur", commit);
+    }
+
+    pill.addEventListener("click", (e) => {
+      if (e.target.tagName === "INPUT") return;
+      startEdit();
+    });
+    pill.addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" || e.key === " ") && e.target === pill) {
+        e.preventDefault();
+        startEdit();
+      }
+    });
+
+    return pill;
+  }
+
   function render() {
     renderAuthBar();
     const loggedInId = getLoggedInBoyId();
@@ -326,12 +395,30 @@
 
       const stats = document.createElement("div");
       stats.className = "stats-row";
-      const pointsPill = document.createElement("span");
-      pointsPill.className = "stat-pill points";
-      pointsPill.textContent = `⭐ ${boyState.points} pts`;
-      const streakPill = document.createElement("span");
-      streakPill.className = "stat-pill streak";
-      streakPill.textContent = `🔥 ${boyState.streak} week streak`;
+      const pointsPill = makeAdjustablePill({
+        icon: "⭐",
+        suffix: "pts",
+        className: "points",
+        value: boyState.points,
+        title: `Adjust ${boy.name}'s points`,
+        onCommit: (next) => {
+          boyState.points = next;
+          saveData(data);
+          render();
+        },
+      });
+      const streakPill = makeAdjustablePill({
+        icon: "🔥",
+        suffix: "week streak",
+        className: "streak",
+        value: boyState.streak,
+        title: `Adjust ${boy.name}'s week streak`,
+        onCommit: (next) => {
+          boyState.streak = next;
+          saveData(data);
+          render();
+        },
+      });
       const weekPill = document.createElement("span");
       weekPill.className = "stat-pill";
       weekPill.textContent = `${doneCount}/7 this week`;
