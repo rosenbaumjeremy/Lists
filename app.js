@@ -2,7 +2,7 @@
 (function () {
   "use strict";
 
-  const BOYS = [
+  const DEFAULT_BOYS = [
     { id: "shai", name: "Shai", task: "Math homework", color: "#7c3aed", emoji: "🧮" },
     { id: "calev", name: "Calev", task: "Laining", color: "#0ea5e9", emoji: "📖" },
     { id: "aharon", name: "Aharon", task: "Daily Perek", color: "#f59e0b", emoji: "📜" },
@@ -12,8 +12,45 @@
   const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const STORAGE_KEY = "progressTracker.v1";
   const SESSION_KEY = "progressTracker.session";
+  const ROSTER_KEY = "progressTracker.roster.v1";
   const POINTS_PER_DAY = 10;
   const FULL_WEEK_BONUS = 25;
+  const PALETTE = ["#7c3aed", "#0ea5e9", "#f59e0b", "#22c55e", "#ef4444", "#ec4899"];
+
+  function loadRoster() {
+    try {
+      const raw = localStorage.getItem(ROSTER_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.warn("Could not read saved roster", e);
+    }
+    return DEFAULT_BOYS.map((b) => ({ ...b }));
+  }
+
+  function saveRoster(roster) {
+    localStorage.setItem(ROSTER_KEY, JSON.stringify(roster));
+  }
+
+  function slugify(name, existingIds) {
+    let base = (name || "person")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    if (!base) base = "person";
+    let id = base;
+    let n = 2;
+    while (existingIds.has(id)) {
+      id = `${base}-${n}`;
+      n += 1;
+    }
+    return id;
+  }
+
+  let BOYS = loadRoster();
 
   // Simple non-cryptographic hash — this is a family-friendly lock to stop
   // siblings from checking off each other's tasks, not real security. Anyone
@@ -101,7 +138,9 @@
     if (loggedInBoy) {
       const status = document.createElement("div");
       status.className = "auth-status";
-      status.innerHTML = `<span>${loggedInBoy.emoji} Logged in as ${loggedInBoy.name}</span>`;
+      const statusSpan = document.createElement("span");
+      statusSpan.textContent = `${loggedInBoy.emoji} Logged in as ${loggedInBoy.name}`;
+      status.appendChild(statusSpan);
       const logoutBtn = document.createElement("button");
       logoutBtn.type = "button";
       logoutBtn.className = "auth-btn secondary";
@@ -131,7 +170,13 @@
   const loginError = document.getElementById("loginError");
   const loginCancel = document.getElementById("loginCancel");
 
-  loginName.innerHTML = BOYS.map((b) => `<option value="${b.id}">${b.name}</option>`).join("");
+  loginName.innerHTML = "";
+  BOYS.forEach((b) => {
+    const option = document.createElement("option");
+    option.value = b.id;
+    option.textContent = b.name;
+    loginName.appendChild(option);
+  });
 
   function updateLoginHint() {
     const boyState = getBoyState(data, loginName.value);
@@ -211,7 +256,10 @@
 
       const names = document.createElement("div");
       names.className = "names";
-      names.innerHTML = `<p class="card-name">${boy.name}</p>`;
+      const nameEl = document.createElement("p");
+      nameEl.className = "card-name";
+      nameEl.textContent = boy.name;
+      names.appendChild(nameEl);
 
       const taskRow = document.createElement("div");
       taskRow.className = "task-row";
@@ -278,11 +326,18 @@
 
       const stats = document.createElement("div");
       stats.className = "stats-row";
-      stats.innerHTML = `
-        <span class="stat-pill points">⭐ ${boyState.points} pts</span>
-        <span class="stat-pill streak">🔥 ${boyState.streak} week streak</span>
-        <span class="stat-pill">${doneCount}/7 this week</span>
-      `;
+      const pointsPill = document.createElement("span");
+      pointsPill.className = "stat-pill points";
+      pointsPill.textContent = `⭐ ${boyState.points} pts`;
+      const streakPill = document.createElement("span");
+      streakPill.className = "stat-pill streak";
+      streakPill.textContent = `🔥 ${boyState.streak} week streak`;
+      const weekPill = document.createElement("span");
+      weekPill.className = "stat-pill";
+      weekPill.textContent = `${doneCount}/7 this week`;
+      stats.appendChild(pointsPill);
+      stats.appendChild(streakPill);
+      stats.appendChild(weekPill);
       card.appendChild(stats);
 
       const bar = document.createElement("div");
@@ -309,33 +364,44 @@
         group.className = "radio-group";
         const groupName = `day-${boy.id}-${i}`;
 
-        const disabledAttr = isOwner ? "" : "disabled";
-
         const doneWrap = document.createElement("div");
         doneWrap.className = "radio-option done";
         const doneId = `${groupName}-done`;
-        doneWrap.innerHTML = `<input type="radio" name="${groupName}" id="${doneId}" value="done" ${
-          days[i] ? "checked" : ""
-        } ${disabledAttr}><label for="${doneId}" title="${
-          isOwner ? `${boy.name} did it on ${label}` : `Log in as ${boy.name} to update this`
-        }">✓</label>`;
+        const doneInput = document.createElement("input");
+        doneInput.type = "radio";
+        doneInput.name = groupName;
+        doneInput.id = doneId;
+        doneInput.value = "done";
+        doneInput.checked = !!days[i];
+        doneInput.disabled = !isOwner;
+        const doneLabel = document.createElement("label");
+        doneLabel.setAttribute("for", doneId);
+        doneLabel.title = isOwner ? `${boy.name} did it on ${label}` : `Log in as ${boy.name} to update this`;
+        doneLabel.textContent = "✓";
+        doneWrap.appendChild(doneInput);
+        doneWrap.appendChild(doneLabel);
 
         const pendingWrap = document.createElement("div");
         pendingWrap.className = "radio-option pending";
         const pendingId = `${groupName}-pending`;
-        pendingWrap.innerHTML = `<input type="radio" name="${groupName}" id="${pendingId}" value="pending" ${
-          !days[i] ? "checked" : ""
-        } ${disabledAttr}><label for="${pendingId}" title="${
-          isOwner ? "Not done yet" : `Log in as ${boy.name} to update this`
-        }">–</label>`;
+        const pendingInput = document.createElement("input");
+        pendingInput.type = "radio";
+        pendingInput.name = groupName;
+        pendingInput.id = pendingId;
+        pendingInput.value = "pending";
+        pendingInput.checked = !days[i];
+        pendingInput.disabled = !isOwner;
+        const pendingLabel = document.createElement("label");
+        pendingLabel.setAttribute("for", pendingId);
+        pendingLabel.title = isOwner ? "Not done yet" : `Log in as ${boy.name} to update this`;
+        pendingLabel.textContent = "–";
+        pendingWrap.appendChild(pendingInput);
+        pendingWrap.appendChild(pendingLabel);
 
         group.appendChild(doneWrap);
         group.appendChild(pendingWrap);
         dayCol.appendChild(group);
         daysRow.appendChild(dayCol);
-
-        const doneInput = doneWrap.querySelector("input");
-        const pendingInput = pendingWrap.querySelector("input");
 
         doneInput.addEventListener("change", () => {
           if (doneInput.checked) {
@@ -471,6 +537,140 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   }
+
+  // --- Settings: edit names/tasks without touching code ---
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const settingsList = document.getElementById("settingsList");
+  const openSettingsBtn = document.getElementById("openSettings");
+  const closeSettingsBtn = document.getElementById("closeSettings");
+  const addPersonBtn = document.getElementById("addPerson");
+  const saveSettingsBtn = document.getElementById("saveSettings");
+
+  let draftRoster = [];
+
+  function openSettings() {
+    // Work on a copy so cancelling (closing without saving) discards edits.
+    draftRoster = BOYS.map((b) => ({ ...b }));
+    renderSettingsList();
+    settingsOverlay.classList.add("show");
+    settingsOverlay.setAttribute("aria-hidden", "false");
+  }
+
+  function closeSettings() {
+    settingsOverlay.classList.remove("show");
+    settingsOverlay.setAttribute("aria-hidden", "true");
+  }
+
+  function renderSettingsList() {
+    settingsList.innerHTML = "";
+    draftRoster.forEach((person, index) => {
+      const row = document.createElement("div");
+      row.className = "settings-row";
+
+      const emojiColorWrap = document.createElement("div");
+      emojiColorWrap.className = "emoji-color";
+      const emojiInput = document.createElement("input");
+      emojiInput.type = "text";
+      emojiInput.className = "emoji-input";
+      emojiInput.value = person.emoji;
+      emojiInput.maxLength = 4;
+      emojiInput.setAttribute("aria-label", "Emoji");
+      emojiInput.addEventListener("input", () => {
+        draftRoster[index].emoji = emojiInput.value || "⭐";
+      });
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = person.color;
+      colorInput.setAttribute("aria-label", "Color");
+      colorInput.addEventListener("input", () => {
+        draftRoster[index].color = colorInput.value;
+      });
+      emojiColorWrap.appendChild(emojiInput);
+      emojiColorWrap.appendChild(colorInput);
+
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = person.name;
+      nameInput.placeholder = "Name";
+      nameInput.setAttribute("aria-label", "Name");
+      nameInput.addEventListener("input", () => {
+        draftRoster[index].name = nameInput.value;
+      });
+
+      const taskInput = document.createElement("input");
+      taskInput.type = "text";
+      taskInput.value = person.task;
+      taskInput.placeholder = "Task";
+      taskInput.setAttribute("aria-label", "Task");
+      taskInput.addEventListener("input", () => {
+        draftRoster[index].task = taskInput.value;
+      });
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "remove-person";
+      removeBtn.textContent = "✕";
+      removeBtn.setAttribute("aria-label", `Remove ${person.name || "person"}`);
+      removeBtn.addEventListener("click", () => {
+        if (draftRoster.length <= 1) {
+          alert("You need at least one person.");
+          return;
+        }
+        if (!confirm(`Remove ${person.name || "this person"}? Their saved progress will stay stored but hidden.`)) return;
+        draftRoster.splice(index, 1);
+        renderSettingsList();
+      });
+
+      row.appendChild(emojiColorWrap);
+      row.appendChild(nameInput);
+      row.appendChild(taskInput);
+      row.appendChild(removeBtn);
+      settingsList.appendChild(row);
+    });
+  }
+
+  openSettingsBtn.addEventListener("click", openSettings);
+  closeSettingsBtn.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", (e) => {
+    if (e.target === settingsOverlay) closeSettings();
+  });
+
+  addPersonBtn.addEventListener("click", () => {
+    const existingIds = new Set(draftRoster.map((p) => p.id));
+    draftRoster.push({
+      id: slugify("new-person", existingIds),
+      name: "",
+      task: "",
+      color: PALETTE[draftRoster.length % PALETTE.length],
+      emoji: "⭐",
+    });
+    renderSettingsList();
+    settingsList.scrollTop = settingsList.scrollHeight;
+  });
+
+  saveSettingsBtn.addEventListener("click", () => {
+    const existingIds = new Set();
+    const cleaned = draftRoster.map((person) => {
+      const name = person.name.trim() || "Someone";
+      let id = person.id;
+      if (!id || existingIds.has(id)) {
+        id = slugify(name, existingIds);
+      }
+      existingIds.add(id);
+      return {
+        id,
+        name,
+        task: person.task.trim() || "Task",
+        color: person.color || "#7c3aed",
+        emoji: person.emoji || "⭐",
+      };
+    });
+
+    BOYS = cleaned;
+    saveRoster(BOYS);
+    closeSettings();
+    render();
+  });
 
   document.getElementById("resetWeek").addEventListener("click", () => {
     if (!confirm("Reset this week's check-offs for everyone? Points already earned stay banked.")) return;

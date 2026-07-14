@@ -28,6 +28,7 @@
 
       <footer class="page-footer">
         <button id="resetWeek" class="reset-btn" type="button">Reset this week</button>
+        <button id="openSettings" class="reset-btn" type="button">Edit names &amp; tasks</button>
         <span class="week-label" id="weekLabel"></span>
       </footer>
     </main>
@@ -54,6 +55,20 @@
           <button type="submit" class="login-submit">Log in</button>
         </div>
       </form>
+    </div>
+
+    <div id="settingsOverlay" class="settings-overlay" aria-hidden="true">
+      <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <div class="settings-header">
+          <h2 id="settingsTitle">Edit names &amp; tasks</h2>
+          <button id="closeSettings" class="icon-btn" type="button" aria-label="Close">✕</button>
+        </div>
+        <div id="settingsList" class="settings-list"></div>
+        <button id="addPerson" class="add-btn" type="button">+ Add person</button>
+        <div class="settings-footer">
+          <button id="saveSettings" class="save-btn" type="button">Save</button>
+        </div>
+      </div>
     </div>
 
     <script src="scores.js"></script>
