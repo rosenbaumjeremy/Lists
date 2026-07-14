@@ -31,6 +31,128 @@ body {
   padding: 48px 24px 64px;
 }
 
+/* --- Sports scores ticker --- */
+.scores-ticker {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  background: #111827;
+  color: #f9fafb;
+  overflow: hidden;
+  border-bottom: 3px solid var(--accent-2);
+}
+
+.scores-ticker-label {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: #fff;
+  white-space: nowrap;
+  box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.35);
+}
+
+.scores-ticker-track {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  white-space: nowrap;
+  padding: 8px 0;
+  animation: scores-scroll 90s linear infinite;
+  width: max-content;
+}
+
+.scores-ticker:hover .scores-ticker-track {
+  animation-play-state: paused;
+}
+
+@keyframes scores-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.scores-loading {
+  font-size: 13px;
+  color: #9ca3af;
+  padding: 0 16px;
+}
+
+.score-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 0 4px;
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  padding-right: 24px;
+}
+
+.score-league {
+  font-weight: 700;
+  color: var(--accent-2);
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.score-matchup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.score-team {
+  font-weight: 600;
+  color: #d1d5db;
+}
+
+.score-team.winner {
+  color: #fff;
+}
+
+.score-num {
+  font-weight: 700;
+  color: #d1d5db;
+  min-width: 1.2em;
+  text-align: center;
+}
+
+.score-num.winner {
+  color: #22c55e;
+}
+
+.score-at {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.score-status {
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.score-status.live {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .scores-ticker-label {
+    display: none;
+  }
+}
+
 .page-header {
   text-align: center;
   margin-bottom: 32px;

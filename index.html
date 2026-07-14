@@ -8,6 +8,13 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <div id="scoresTicker" class="scores-ticker" aria-label="Live sports scores">
+      <div class="scores-ticker-label">🏈 Scores</div>
+      <div class="scores-ticker-track" id="scoresTrack">
+        <span class="scores-loading">Loading scores…</span>
+      </div>
+    </div>
+
     <main class="shell">
       <header class="page-header">
         <p class="tag">Weekly wins</p>
@@ -49,6 +56,7 @@
       </form>
     </div>
 
+    <script src="scores.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
