@@ -356,6 +356,11 @@ h1 {
   opacity: 0.6;
 }
 
+.stat-pill-lock {
+  font-size: 10px;
+  opacity: 0.55;
+}
+
 .stat-pill-input {
   width: 3.2em;
   font: inherit;

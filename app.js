@@ -13,9 +13,17 @@
   const STORAGE_KEY = "progressTracker.v1";
   const SESSION_KEY = "progressTracker.session";
   const ROSTER_KEY = "progressTracker.roster.v1";
+  const PARENT_PIN_KEY = "progressTracker.parentPinHash";
   const POINTS_PER_DAY = 10;
   const FULL_WEEK_BONUS = 25;
   const PALETTE = ["#7c3aed", "#0ea5e9", "#f59e0b", "#22c55e", "#ef4444", "#ec4899"];
+
+  // Parent/admin is a fixed pseudo-account, not part of the editable roster —
+  // it must survive roster edits (renaming/removing kids) since it's the
+  // account that manages them. Its PIN is stored separately from any boy's
+  // state for the same reason.
+  const PARENT_ID = "__parent__";
+  const PARENT_ACCOUNT = { id: PARENT_ID, name: "Parent", emoji: "👑" };
 
   function loadRoster() {
     try {
@@ -133,13 +141,14 @@
   function renderAuthBar() {
     authBar.innerHTML = "";
     const loggedInId = getLoggedInBoyId();
-    const loggedInBoy = BOYS.find((b) => b.id === loggedInId);
+    const loggedInAccount =
+      loggedInId === PARENT_ID ? PARENT_ACCOUNT : BOYS.find((b) => b.id === loggedInId);
 
-    if (loggedInBoy) {
+    if (loggedInAccount) {
       const status = document.createElement("div");
       status.className = "auth-status";
       const statusSpan = document.createElement("span");
-      statusSpan.textContent = `${loggedInBoy.emoji} Logged in as ${loggedInBoy.name}`;
+      statusSpan.textContent = `${loggedInAccount.emoji} Logged in as ${loggedInAccount.name}`;
       status.appendChild(statusSpan);
       const logoutBtn = document.createElement("button");
       logoutBtn.type = "button";
@@ -170,17 +179,33 @@
   const loginError = document.getElementById("loginError");
   const loginCancel = document.getElementById("loginCancel");
 
-  loginName.innerHTML = "";
-  BOYS.forEach((b) => {
-    const option = document.createElement("option");
-    option.value = b.id;
-    option.textContent = b.name;
-    loginName.appendChild(option);
-  });
+  function populateLoginOptions() {
+    loginName.innerHTML = "";
+    const parentOption = document.createElement("option");
+    parentOption.value = PARENT_ID;
+    parentOption.textContent = `${PARENT_ACCOUNT.emoji} Parent (admin)`;
+    loginName.appendChild(parentOption);
+    BOYS.forEach((b) => {
+      const option = document.createElement("option");
+      option.value = b.id;
+      option.textContent = b.name;
+      loginName.appendChild(option);
+    });
+  }
+  populateLoginOptions();
+
+  function getParentPinHash() {
+    return localStorage.getItem(PARENT_PIN_KEY) || null;
+  }
+
+  function setParentPinHash(hash) {
+    localStorage.setItem(PARENT_PIN_KEY, hash);
+  }
 
   function updateLoginHint() {
-    const boyState = getBoyState(data, loginName.value);
-    loginHint.textContent = boyState.pinHash
+    const isParent = loginName.value === PARENT_ID;
+    const currentHash = isParent ? getParentPinHash() : getBoyState(data, loginName.value).pinHash;
+    loginHint.textContent = currentHash
       ? "Enter your PIN to log in."
       : "First time logging in? Just type a PIN to set it up.";
   }
@@ -208,8 +233,7 @@
 
   loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    const boyId = loginName.value;
-    const boy = BOYS.find((b) => b.id === boyId);
+    const accountId = loginName.value;
     const pin = loginPin.value.trim();
 
     if (pin.length < 4) {
@@ -217,35 +241,56 @@
       return;
     }
 
-    const boyState = getBoyState(data, boyId);
-    if (!boyState.pinHash) {
-      boyState.pinHash = hashPin(pin);
-      saveData(data);
-    } else if (boyState.pinHash !== hashPin(pin)) {
-      loginError.textContent = "That PIN doesn't match. Try again.";
-      return;
+    if (accountId === PARENT_ID) {
+      const existingHash = getParentPinHash();
+      if (!existingHash) {
+        setParentPinHash(hashPin(pin));
+      } else if (existingHash !== hashPin(pin)) {
+        loginError.textContent = "That PIN doesn't match. Try again.";
+        return;
+      }
+    } else {
+      const boyState = getBoyState(data, accountId);
+      if (!boyState.pinHash) {
+        boyState.pinHash = hashPin(pin);
+        saveData(data);
+      } else if (boyState.pinHash !== hashPin(pin)) {
+        loginError.textContent = "That PIN doesn't match. Try again.";
+        return;
+      }
     }
 
-    setLoggedInBoyId(boyId);
+    setLoggedInBoyId(accountId);
     closeLoginModal();
     render();
   });
 
-  // A stat pill (points/streak) a parent can click to type in a corrected
-  // value directly — not gated behind login, since there's no separate parent
-  // account and this is a manual correction tool, not a kid-facing control.
-  function makeAdjustablePill({ icon, suffix, className, value, title, onCommit }) {
+  // A stat pill (points/streak) the logged-in parent can click to type in a
+  // corrected value directly. Only the parent/admin account can adjust these —
+  // kids can check off their own days, but only the parent can hand-edit the
+  // point/streak totals themselves.
+  function makeAdjustablePill({ icon, suffix, className, value, title, editable, lockedTitle, onCommit }) {
     const pill = document.createElement("span");
-    pill.className = `stat-pill adjustable ${className}`;
-    pill.title = title;
-    pill.tabIndex = 0;
-    pill.setAttribute("role", "button");
-    pill.setAttribute("aria-label", title);
+    pill.className = `stat-pill ${className}` + (editable ? " adjustable" : "");
+    pill.title = editable ? title : lockedTitle;
 
     const label = document.createElement("span");
     label.className = "stat-pill-label";
     label.textContent = `${icon} ${value} ${suffix}`;
     pill.appendChild(label);
+
+    if (!editable) {
+      const lockIcon = document.createElement("span");
+      lockIcon.className = "stat-pill-lock";
+      lockIcon.textContent = "🔒";
+      lockIcon.setAttribute("aria-hidden", "true");
+      pill.appendChild(lockIcon);
+      return pill;
+    }
+
+    pill.tabIndex = 0;
+    pill.setAttribute("role", "button");
+    pill.setAttribute("aria-label", title);
 
     const editIcon = document.createElement("span");
     editIcon.className = "stat-pill-edit";
@@ -311,6 +356,7 @@
       const doneCount = days.filter(Boolean).length;
       const isFullWeek = doneCount === 7;
       const isOwner = loggedInId === boy.id;
+      const isParent = loggedInId === PARENT_ID;
 
       const card = document.createElement("div");
       card.className = "card" + (isFullWeek ? " full-week" : "") + (isOwner ? "" : " locked");
@@ -401,6 +447,8 @@
         className: "points",
         value: boyState.points,
         title: `Adjust ${boy.name}'s points`,
+        lockedTitle: "Only the parent admin can adjust points",
+        editable: isParent,
         onCommit: (next) => {
           boyState.points = next;
           saveData(data);
@@ -413,6 +461,8 @@
         className: "streak",
         value: boyState.streak,
         title: `Adjust ${boy.name}'s week streak`,
+        lockedTitle: "Only the parent admin can adjust the streak",
+        editable: isParent,
         onCommit: (next) => {
           boyState.streak = next;
           saveData(data);
@@ -755,6 +805,7 @@
 
     BOYS = cleaned;
     saveRoster(BOYS);
+    populateLoginOptions();
     closeSettings();
     render();
   });
