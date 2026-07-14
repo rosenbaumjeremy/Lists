@@ -11,8 +11,22 @@
 
   const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const STORAGE_KEY = "progressTracker.v1";
+  const SESSION_KEY = "progressTracker.session";
   const POINTS_PER_DAY = 10;
   const FULL_WEEK_BONUS = 25;
+
+  // Simple non-cryptographic hash — this is a family-friendly lock to stop
+  // siblings from checking off each other's tasks, not real security. Anyone
+  // with access to the code/storage can bypass it.
+  function hashPin(pin) {
+    let h = 0;
+    const salted = `pt-salt-${pin}`;
+    for (let i = 0; i < salted.length; i++) {
+      h = (h << 5) - h + salted.charCodeAt(i);
+      h |= 0;
+    }
+    return String(h);
+  }
 
   function getWeekKey(date) {
     // ISO-ish week key: year + week number, anchored to Sunday-start weeks.
@@ -64,7 +78,117 @@
   const weekLabel = document.getElementById("weekLabel");
   weekLabel.textContent = `Week of ${currentWeekKey}`;
 
+  function getLoggedInBoyId() {
+    return localStorage.getItem(SESSION_KEY) || null;
+  }
+
+  function setLoggedInBoyId(boyId) {
+    if (boyId) {
+      localStorage.setItem(SESSION_KEY, boyId);
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  }
+
+  // --- Auth bar ---
+  const authBar = document.getElementById("authBar");
+
+  function renderAuthBar() {
+    authBar.innerHTML = "";
+    const loggedInId = getLoggedInBoyId();
+    const loggedInBoy = BOYS.find((b) => b.id === loggedInId);
+
+    if (loggedInBoy) {
+      const status = document.createElement("div");
+      status.className = "auth-status";
+      status.innerHTML = `<span>${loggedInBoy.emoji} Logged in as ${loggedInBoy.name}</span>`;
+      const logoutBtn = document.createElement("button");
+      logoutBtn.type = "button";
+      logoutBtn.className = "auth-btn secondary";
+      logoutBtn.textContent = "Log out";
+      logoutBtn.addEventListener("click", () => {
+        setLoggedInBoyId(null);
+        render();
+      });
+      status.appendChild(logoutBtn);
+      authBar.appendChild(status);
+    } else {
+      const loginBtn = document.createElement("button");
+      loginBtn.type = "button";
+      loginBtn.className = "auth-btn";
+      loginBtn.textContent = "Log in";
+      loginBtn.addEventListener("click", openLoginModal);
+      authBar.appendChild(loginBtn);
+    }
+  }
+
+  // --- Login modal ---
+  const loginOverlay = document.getElementById("loginOverlay");
+  const loginForm = document.getElementById("loginForm");
+  const loginName = document.getElementById("loginName");
+  const loginPin = document.getElementById("loginPin");
+  const loginHint = document.getElementById("loginHint");
+  const loginError = document.getElementById("loginError");
+  const loginCancel = document.getElementById("loginCancel");
+
+  loginName.innerHTML = BOYS.map((b) => `<option value="${b.id}">${b.name}</option>`).join("");
+
+  function updateLoginHint() {
+    const boyState = getBoyState(data, loginName.value);
+    loginHint.textContent = boyState.pinHash
+      ? "Enter your PIN to log in."
+      : "First time logging in? Just type a PIN to set it up.";
+  }
+
+  loginName.addEventListener("change", updateLoginHint);
+
+  function openLoginModal() {
+    loginError.textContent = "";
+    loginPin.value = "";
+    updateLoginHint();
+    loginOverlay.classList.add("show");
+    loginOverlay.setAttribute("aria-hidden", "false");
+    setTimeout(() => loginPin.focus(), 0);
+  }
+
+  function closeLoginModal() {
+    loginOverlay.classList.remove("show");
+    loginOverlay.setAttribute("aria-hidden", "true");
+  }
+
+  loginCancel.addEventListener("click", closeLoginModal);
+  loginOverlay.addEventListener("click", (e) => {
+    if (e.target === loginOverlay) closeLoginModal();
+  });
+
+  loginForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const boyId = loginName.value;
+    const boy = BOYS.find((b) => b.id === boyId);
+    const pin = loginPin.value.trim();
+
+    if (pin.length < 4) {
+      loginError.textContent = "PIN needs to be at least 4 digits.";
+      return;
+    }
+
+    const boyState = getBoyState(data, boyId);
+    if (!boyState.pinHash) {
+      boyState.pinHash = hashPin(pin);
+      saveData(data);
+    } else if (boyState.pinHash !== hashPin(pin)) {
+      loginError.textContent = "That PIN doesn't match. Try again.";
+      return;
+    }
+
+    setLoggedInBoyId(boyId);
+    closeLoginModal();
+    render();
+  });
+
   function render() {
+    renderAuthBar();
+    const loggedInId = getLoggedInBoyId();
     board.innerHTML = "";
     BOYS.forEach((boy) => {
       const boyState = getBoyState(data, boy.id);
@@ -72,9 +196,10 @@
       const days = week.days;
       const doneCount = days.filter(Boolean).length;
       const isFullWeek = doneCount === 7;
+      const isOwner = loggedInId === boy.id;
 
       const card = document.createElement("div");
-      card.className = "card" + (isFullWeek ? " full-week" : "");
+      card.className = "card" + (isFullWeek ? " full-week" : "") + (isOwner ? "" : " locked");
 
       const top = document.createElement("div");
       top.className = "card-top";
@@ -95,18 +220,27 @@
       taskText.className = "card-task";
       taskText.textContent = effectiveTask;
 
-      const editBtn = document.createElement("button");
-      editBtn.type = "button";
-      editBtn.className = "edit-task-btn";
-      editBtn.title = `Change ${boy.name}'s task`;
-      editBtn.setAttribute("aria-label", `Change ${boy.name}'s task`);
-      editBtn.textContent = "✏️";
-
       taskRow.appendChild(taskText);
-      taskRow.appendChild(editBtn);
+
+      let editBtn = null;
+      if (isOwner) {
+        editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "edit-task-btn";
+        editBtn.title = `Change ${boy.name}'s task`;
+        editBtn.setAttribute("aria-label", `Change ${boy.name}'s task`);
+        editBtn.textContent = "✏️";
+        taskRow.appendChild(editBtn);
+      } else {
+        const lockBadge = document.createElement("span");
+        lockBadge.className = "lock-badge";
+        lockBadge.textContent = "🔒";
+        lockBadge.title = `Log in as ${boy.name} to edit`;
+        taskRow.appendChild(lockBadge);
+      }
       names.appendChild(taskRow);
 
-      editBtn.addEventListener("click", () => {
+      if (editBtn) editBtn.addEventListener("click", () => {
         const input = document.createElement("input");
         input.type = "text";
         input.className = "task-input";
@@ -175,19 +309,25 @@
         group.className = "radio-group";
         const groupName = `day-${boy.id}-${i}`;
 
+        const disabledAttr = isOwner ? "" : "disabled";
+
         const doneWrap = document.createElement("div");
         doneWrap.className = "radio-option done";
         const doneId = `${groupName}-done`;
         doneWrap.innerHTML = `<input type="radio" name="${groupName}" id="${doneId}" value="done" ${
           days[i] ? "checked" : ""
-        }><label for="${doneId}" title="${boy.name} did it on ${label}">✓</label>`;
+        } ${disabledAttr}><label for="${doneId}" title="${
+          isOwner ? `${boy.name} did it on ${label}` : `Log in as ${boy.name} to update this`
+        }">✓</label>`;
 
         const pendingWrap = document.createElement("div");
         pendingWrap.className = "radio-option pending";
         const pendingId = `${groupName}-pending`;
         pendingWrap.innerHTML = `<input type="radio" name="${groupName}" id="${pendingId}" value="pending" ${
           !days[i] ? "checked" : ""
-        }><label for="${pendingId}" title="Not done yet">–</label>`;
+        } ${disabledAttr}><label for="${pendingId}" title="${
+          isOwner ? "Not done yet" : `Log in as ${boy.name} to update this`
+        }">–</label>`;
 
         group.appendChild(doneWrap);
         group.appendChild(pendingWrap);
@@ -215,6 +355,7 @@
   }
 
   function handleDayToggle(boy, dayIndex, isDone) {
+    if (getLoggedInBoyId() !== boy.id) return; // safety net; disabled inputs shouldn't fire this anyway
     const boyState = getBoyState(data, boy.id);
     const week = getWeekEntry(boyState, currentWeekKey);
     const days = week.days;

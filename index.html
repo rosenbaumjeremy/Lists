@@ -15,6 +15,8 @@
         <p class="lead">Tap a day once your task is done. Watch the streaks grow!</p>
       </header>
 
+      <div class="auth-bar" id="authBar"></div>
+
       <section id="board" class="board"></section>
 
       <footer class="page-footer">
@@ -30,6 +32,22 @@
       </div>
     </div>
     <canvas id="confetti"></canvas>
+
+    <div id="loginOverlay" class="login-overlay" aria-hidden="true">
+      <form id="loginForm" class="login-card">
+        <h2 class="login-title">Who's checking in?</h2>
+        <label class="login-label" for="loginName">Name</label>
+        <select id="loginName" class="login-select"></select>
+        <label class="login-label" for="loginPin">PIN</label>
+        <input id="loginPin" class="login-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" />
+        <p class="login-hint" id="loginHint">First time logging in? Just type a PIN to set it up.</p>
+        <p class="login-error" id="loginError" role="alert"></p>
+        <div class="login-actions">
+          <button type="button" class="login-cancel" id="loginCancel">Cancel</button>
+          <button type="submit" class="login-submit">Log in</button>
+        </div>
+      </form>
+    </div>
 
     <script src="app.js"></script>
   </body>

@@ -26,7 +26,15 @@ built out as a family progress tracker.
   7 days in a week adds a streak point and a bigger celebration.
 - "Reset this week" clears the current week's check-offs (banked points and
   streaks are preserved).
-- To change names/tasks, edit the `BOYS` array at the top of `app.js`.
+- Each child can rename their own task from the ✏️ button next to it (no code
+  editing needed).
+- **Login lock:** each child picks their name and sets a PIN the first time
+  they log in (stored hashed in `localStorage`, key `progressTracker.v1`).
+  Only the logged-in child's checklist/edit controls are unlocked — everyone
+  else's card is view-only with a 🔒 badge. This is a family-friendly
+  deterrent, not real security — it's a static site with no backend, so
+  anyone with dev-tools access could bypass it.
+- To add/remove kids, edit the `BOYS` array at the top of `app.js`.
 
 ## User preferences
 (none recorded yet)
