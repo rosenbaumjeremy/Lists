@@ -1,15 +1,13 @@
-// Live sports scores ticker — pulls the same leagues shown on ESPN.com's
-// front-page scores rail from ESPN's public scoreboard API and scrolls them
-// across the top of the page. No API key needed; refreshes periodically.
+// Top sports events — mirrors ESPN.com's front-page "Top Events" rail rather
+// than every league's full slate (that rail is a hand-curated, ever-changing
+// subset with no public API). We approximate it with the handful of leagues
+// ESPN's rail is actually featuring right now. Each sport gets its own titled
+// panel with a dropdown to pick among that sport's games happening today, and
+// a Box Score link when ESPN's API provides one (i.e. once the game has
+// actually started).
 (function () {
   "use strict";
 
-  // Mirrors ESPN.com's front-page "Top Events" rail rather than every league's
-  // full slate — that rail is a hand-curated, ever-changing subset (whatever
-  // ESPN is featuring that day: a World Cup, the World Series, summer league,
-  // etc.), which has no public API. We approximate it by pulling from the
-  // handful of leagues ESPN's rail actually features right now, and only
-  // showing today's live/upcoming games from each (never a full schedule).
   const LEAGUES = [
     { path: "soccer/fifa.world", label: "World Cup" },
     { path: "baseball/mlb", label: "MLB" },
@@ -17,48 +15,53 @@
     { path: "basketball/nba-summer-las-vegas", label: "NBA Summer League" },
   ];
 
-  const MAX_ITEMS = 12;
   const REFRESH_MS = 60000;
-  const track = document.getElementById("scoresTrack");
-  if (!track) return;
+  const inner = document.getElementById("scoresPanelInner");
+  if (!inner) return;
 
   function formatStatus(event) {
     const status = event.status || {};
     const type = status.type || {};
-    if (type.state === "in") {
-      return status.type.shortDetail || "Live";
-    }
-    if (type.state === "post") {
-      return "Final";
-    }
-    // Pre-game: show the scheduled time.
+    if (type.state === "in") return type.shortDetail || "Live";
+    if (type.state === "post") return "Final";
     const date = new Date(event.date);
     return date.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
   }
 
-  function buildItem(leagueLabel, event) {
+  function findBoxscoreLink(event) {
+    const links = event.links || [];
+    const match = links.find((l) => Array.isArray(l.rel) && l.rel.includes("boxscore"));
+    return match ? match.href : null;
+  }
+
+  function describeEvent(event) {
     const competition = (event.competitions && event.competitions[0]) || {};
     const competitors = competition.competitors || [];
     const home = competitors.find((c) => c.homeAway === "home") || competitors[0];
     const away = competitors.find((c) => c.homeAway === "away") || competitors[1];
-    if (!home || !away) return null;
+    const homeAbbr = (home && home.team && (home.team.abbreviation || home.team.shortDisplayName)) || "?";
+    const awayAbbr = (away && away.team && (away.team.abbreviation || away.team.shortDisplayName)) || "?";
+    return { home, away, homeAbbr, awayAbbr };
+  }
 
-    const isFinal = (event.status && event.status.type && event.status.type.state === "post") || false;
-    const isLive = (event.status && event.status.type && event.status.type.state === "in") || false;
+  function renderPanelScore(panelEl, league, events, selectedId) {
+    const scoreBox = panelEl.querySelector(".score-display");
+    const event = events.find((e) => e.id === selectedId) || events[0];
+    if (!event) {
+      scoreBox.innerHTML = '<span class="scores-loading">No games today.</span>';
+      return;
+    }
 
-    const homeAbbr = (home.team && (home.team.abbreviation || home.team.shortDisplayName)) || "?";
-    const awayAbbr = (away.team && (away.team.abbreviation || away.team.shortDisplayName)) || "?";
-    const homeScore = home.score != null ? home.score : "-";
-    const awayScore = away.score != null ? away.score : "-";
+    const { home, away, homeAbbr, awayAbbr } = describeEvent(event);
+    const isFinal = event.status && event.status.type && event.status.type.state === "post";
+    const isLive = event.status && event.status.type && event.status.type.state === "in";
+    const homeScore = home && home.score != null ? home.score : "-";
+    const awayScore = away && away.score != null ? away.score : "-";
+    const homeWinner = isFinal && home && home.winner;
+    const awayWinner = isFinal && away && away.winner;
+    const boxscoreHref = findBoxscoreLink(event);
 
-    const homeWinner = isFinal && home.winner;
-    const awayWinner = isFinal && away.winner;
-
-    const item = document.createElement("div");
-    item.className = "score-item" + (isLive ? " live" : "");
-
-    item.innerHTML = `
-      <span class="score-league">${leagueLabel}</span>
+    scoreBox.innerHTML = `
       <span class="score-matchup">
         <span class="score-team${awayWinner ? " winner" : ""}">${awayAbbr}</span>
         <span class="score-num${awayWinner ? " winner" : ""}">${awayScore}</span>
@@ -67,8 +70,48 @@
         <span class="score-num${homeWinner ? " winner" : ""}">${homeScore}</span>
       </span>
       <span class="score-status${isLive ? " live" : ""}">${formatStatus(event)}</span>
+      ${boxscoreHref ? `<a class="boxscore-link" href="${boxscoreHref}" target="_blank" rel="noopener">Box Score →</a>` : ""}
     `;
-    return item;
+  }
+
+  function buildPanel(league, events) {
+    const panel = document.createElement("div");
+    panel.className = "sport-panel";
+
+    const title = document.createElement("div");
+    title.className = "sport-panel-title";
+    title.textContent = league.label;
+    panel.appendChild(title);
+
+    if (events.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "score-display";
+      empty.innerHTML = '<span class="scores-loading">No games today.</span>';
+      panel.appendChild(empty);
+      return panel;
+    }
+
+    const select = document.createElement("select");
+    select.className = "sport-panel-select";
+    events.forEach((event) => {
+      const { awayAbbr, homeAbbr } = describeEvent(event);
+      const option = document.createElement("option");
+      option.value = event.id;
+      option.textContent = `${awayAbbr} @ ${homeAbbr}`;
+      select.appendChild(option);
+    });
+    panel.appendChild(select);
+
+    const scoreDisplay = document.createElement("div");
+    scoreDisplay.className = "score-display";
+    panel.appendChild(scoreDisplay);
+
+    select.addEventListener("change", () => {
+      renderPanelScore(panel, league, events, select.value);
+    });
+
+    renderPanelScore(panel, league, events, select.value);
+    return panel;
   }
 
   async function fetchLeague(league) {
@@ -76,50 +119,32 @@
     const res = await fetch(url);
     if (!res.ok) throw new Error(`ESPN request failed for ${league.label}: ${res.status}`);
     const json = await res.json();
-    const events = json.events || [];
-    return events.map((event) => ({ league, event }));
+    return json.events || [];
   }
 
   async function refresh() {
     const results = await Promise.allSettled(LEAGUES.map(fetchLeague));
-    const items = [];
-    results.forEach((result) => {
-      if (result.status === "fulfilled") {
-        result.value.forEach(({ league, event }) => items.push({ league, event }));
-      }
+
+    inner.innerHTML = "";
+    let anyPanels = false;
+
+    results.forEach((result, i) => {
+      const league = LEAGUES[i];
+      if (result.status !== "fulfilled") return;
+      const events = result.value;
+      // Keep the currently selected game per panel across refreshes when possible.
+      inner.appendChild(buildPanel(league, events));
+      anyPanels = true;
     });
 
-    track.innerHTML = "";
-
-    if (items.length === 0) {
-      const empty = document.createElement("span");
-      empty.className = "scores-loading";
-      empty.textContent = "No games today.";
-      track.appendChild(empty);
-      return;
+    if (!anyPanels) {
+      inner.innerHTML = '<span class="scores-loading">Scores unavailable right now.</span>';
     }
-
-    // Live and today's games first, so the most relevant scores lead the ticker.
-    items.sort((a, b) => {
-      const aLive = a.event.status && a.event.status.type && a.event.status.type.state === "in";
-      const bLive = b.event.status && b.event.status.type && b.event.status.type.state === "in";
-      if (aLive !== bLive) return aLive ? -1 : 1;
-      return 0;
-    });
-
-    items.slice(0, MAX_ITEMS).forEach(({ league, event }) => {
-      const el = buildItem(league.label, event);
-      if (el) track.appendChild(el);
-    });
-
-    // Duplicate the items so the CSS marquee loop has no visible seam.
-    const clone = track.innerHTML;
-    track.innerHTML += clone;
   }
 
   refresh().catch((e) => {
     console.warn("Could not load sports scores", e);
-    track.innerHTML = '<span class="scores-loading">Scores unavailable right now.</span>';
+    inner.innerHTML = '<span class="scores-loading">Scores unavailable right now.</span>';
   });
   setInterval(() => {
     refresh().catch((e) => console.warn("Could not refresh sports scores", e));
