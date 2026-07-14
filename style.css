@@ -36,9 +36,9 @@ body {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: #111827;
-  color: #f9fafb;
-  border-bottom: 3px solid var(--accent-2);
+  background: #f1edfb;
+  color: var(--ink);
+  border-bottom: 1px solid #ddd6f3;
   padding: 10px 16px;
 }
 
@@ -52,7 +52,7 @@ body {
 
 .scores-loading {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--muted);
   padding: 6px 4px;
 }
 
@@ -61,11 +61,12 @@ body {
   flex-direction: column;
   gap: 6px;
   padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #e3ddf5;
   border-radius: 10px;
   min-width: 190px;
   flex: 1 1 190px;
+  box-shadow: 0 1px 2px rgba(124, 58, 237, 0.06);
 }
 
 .sport-panel-title {
@@ -73,16 +74,16 @@ body {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--accent-2);
+  color: var(--accent);
 }
 
 .sport-panel-select {
   font-size: 12px;
   padding: 3px 6px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: #1f2937;
-  color: #f9fafb;
+  border: 1px solid var(--border);
+  background: #fbfaff;
+  color: var(--ink);
   max-width: 100%;
 }
 
@@ -102,43 +103,43 @@ body {
 
 .score-team {
   font-weight: 600;
-  color: #d1d5db;
+  color: var(--muted);
 }
 
 .score-team.winner {
-  color: #fff;
+  color: var(--ink);
 }
 
 .score-num {
   font-weight: 700;
-  color: #d1d5db;
+  color: var(--muted);
   min-width: 1.2em;
   text-align: center;
 }
 
 .score-num.winner {
-  color: #22c55e;
+  color: #16a34a;
 }
 
 .score-at {
-  color: #6b7280;
+  color: #b3aed1;
   font-size: 11px;
 }
 
 .score-status {
-  color: #9ca3af;
+  color: var(--muted);
   font-size: 11px;
 }
 
 .score-status.live {
-  color: #ef4444;
+  color: #e0672a;
   font-weight: 700;
 }
 
 .boxscore-link {
   font-size: 11px;
   font-weight: 700;
-  color: var(--accent-2);
+  color: var(--accent);
   text-decoration: none;
 }
 
