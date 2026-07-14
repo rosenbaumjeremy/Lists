@@ -66,7 +66,7 @@ body {
   gap: 28px;
   white-space: nowrap;
   padding: 8px 0;
-  animation: scores-scroll 90s linear infinite;
+  animation: scores-scroll 220s linear infinite;
   width: max-content;
 }
 

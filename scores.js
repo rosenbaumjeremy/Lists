@@ -4,18 +4,20 @@
 (function () {
   "use strict";
 
+  // Mirrors ESPN.com's front-page "Top Events" rail rather than every league's
+  // full slate — that rail is a hand-curated, ever-changing subset (whatever
+  // ESPN is featuring that day: a World Cup, the World Series, summer league,
+  // etc.), which has no public API. We approximate it by pulling from the
+  // handful of leagues ESPN's rail actually features right now, and only
+  // showing today's live/upcoming games from each (never a full schedule).
   const LEAGUES = [
-    { path: "football/nfl", label: "NFL" },
-    { path: "football/college-football", label: "NCAAF" },
-    { path: "basketball/nba", label: "NBA" },
-    { path: "basketball/wnba", label: "WNBA" },
-    { path: "basketball/mens-college-basketball", label: "NCAAM" },
-    { path: "basketball/womens-college-basketball", label: "NCAAW" },
+    { path: "soccer/fifa.world", label: "World Cup" },
     { path: "baseball/mlb", label: "MLB" },
-    { path: "hockey/nhl", label: "NHL" },
-    { path: "soccer/eng.1", label: "Premier League" },
+    { path: "basketball/wnba", label: "WNBA" },
+    { path: "basketball/nba-summer-las-vegas", label: "NBA Summer League" },
   ];
 
+  const MAX_ITEMS = 12;
   const REFRESH_MS = 60000;
   const track = document.getElementById("scoresTrack");
   if (!track) return;
@@ -105,7 +107,7 @@
       return 0;
     });
 
-    items.forEach(({ league, event }) => {
+    items.slice(0, MAX_ITEMS).forEach(({ league, event }) => {
       const el = buildItem(league.label, event);
       if (el) track.appendChild(el);
     });
